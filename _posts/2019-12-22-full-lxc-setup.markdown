@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "LXC full setup"
+title:  "Unprivileged LXC container setup with network, audio and GUI support"
 date:   2019-12-22 14:07:20 +0000
 categories: lxc
 ---
@@ -24,7 +24,7 @@ lxc.apparmor.allow_nesting = 1
 lxc.idmap = u 0 100000 65536
 lxc.idmap = g 0 100000 65536
 ```
-WARNING. With this setup apparmor throws error for me on debian buster. 
+WARNING. With this setup apparmor throws error on debian buster. 
 When it happen you can sacrafice a little piece of security 
 with `lxc.apparmor.profile=unconfined`. 
 This option disables apparmor protection for containers.
@@ -62,7 +62,7 @@ sudo systemctl start lxc-net
 ```
 lxc-create -t download -n test_cont
 ``` 
-You should see TUI with distributions and versions. Choose interesting distribution, version and arch and proceed. Alternatively you can skip TUI if you know what distro you want. 
+You should see TUI with distributions and versions. Choose interesting distribution, version and arch. Alternatively you can skip TUI if you know what distro you want. 
 E.g 
 ```
 lxc-create -t download -n test_cont -- -d debian -v sid -a amd64
