@@ -186,12 +186,12 @@ The second way is an `rdpmc` instruction which is by default in the Linux enable
 We will enable `rdpmc` instruction to operate in the userspace later in the guide. 
 As usual, PMC's are much more extensively explained in [Intel x86/64 Manual](https://software.intel.com/en-us/download/intel-64-and-ia-32-architectures-sdm-volume-3b-system-programming-guide-part-2) - Volume 3B in Chapter 18.
 
-#### 3.4 How to enable CPU_CLK_UNHALTED.REF_TSC.
+#### 3.4 How to enable CPU_CLK_UNHALTED.CORE.
 
-CPU_CLK_UNHALTED.REF_TSC describes elapsed cycles on the core in reference to the TSC rate.
+CPU_CLK_UNHALTED.CORE describes elapsed cycles on the core.
 In opposite, to raw TSC measure, this metric is resistant to changes in core speed. 
 This is clear advantage over reading base TSC and in my opinion, it's best metric to measure a feature implementation efficiency in cycles.
-This metric is fixed counter with index on two - IA32_FIXED_CTR2.
+This metric is fixed counter with index on one - IA32_FIXED_CTR1.
 
 ![d](/assets/d.png)
 
@@ -199,7 +199,7 @@ This metric is fixed counter with index on two - IA32_FIXED_CTR2.
 
 ![c](/assets/c.png)
 
-To enable the desired counter we need to enable a required bits 8, 9 and 11. This gives us value 0xb00. 
+To enable the desired counter we need to enable a required bits 4, 5 and 7. This gives us value 0x0b0. 
 There is a high probability that there is enabled one fixed counter on our operating system by default. 
 To avoid the risk of messing something up I recommend to enable all fixed counters.
 This is a little bit easier, more portable and doesn't have any performance impact.  
@@ -221,9 +221,9 @@ To enable all fixed counters.
 
 **c)** We can now enumerate enabled fixed registers on addresses 0x309 - 0x30b:
 ```sh
-sudo rdmsr -a 0x30B 
+sudo rdmsr -a 0x30a
 ```
-Now you should see nonzero numbers as result. These are CPU_CLK_UNHALTED.REF_TSC (IA32_FIXED_CTR2) for all cores.  
+Now you should see nonzero numbers as result. These are CPU_CLK_UNHALTED.CORE (IA32_FIXED_CTR1) for all cores.  
 If you see 0 on every counter then GOTO FAQ below.
 
 #### 3.5 How to enable L1D_PEND_MISS.PENDING.
@@ -280,43 +280,9 @@ We should see non zero numbers in both cases. If not GOTO FAQ below.
 
 #### 3.6 How to enable RDPMC instruction in user space?
 
-Our solution is a Linux Kernel Module (LKM). We need to modify 8 bit in Control Register 4 (CR4).
-This bit is responsible for an RDPMC scope. When the bit is set, it's possible to use instruction from userspace. 
-Linux by default has this bit zeroed.
-The scope of this guide doesn't cover writing LKM's so I only want to provide a finished LKM with tips on how to use it.   
-You can find crdrv [here](https://github.com/technateNG/crdrv).   
-LKM's have a big advantage that they switch execution to the same core as an application which opens them.
-```sh
-git clone https://github.com/technateNG/crdrv 
-cd crdrv
-make -j
+We can enable it by echoing two to `/sys/devices/cpu/rdpmc`:
 ```
-When we have our LKM, we need to only enable it in the kernel:
-```sh
-sudo insmod crdrv.ko
-```
-Quick check if it's alright:
-```sh
-sudo dmesg | grep crdrv
-```
-We should see results similar to this:
-```
-crdrv: module loaded
-crdrv: device class created correctly
-```
-This means that the module had been loaded and resulted in node creation on `/dev/crdrv`.
-Now, when we want to use `rdpmc` instruction we need to get File Descriptor (fd) to our node and send the command to enable rdpmc:
-```c
-int fd = open("/dev/crdrv", 0);
-if (fd < 0)
-{
-    puts("[ERROR] Can't open crdrv.");
-    return 1;
-}
-ioctl(fd, 1); // enable RDPMC
-//... code ...
-ioctl(fd, 0); // disable RDPMC
-close(fd);
+sudo sh -c 'echo 2 > /sys/devices/cpu/rdpmc'
 ```
 
 #### 3.7 How to use RDPMC
@@ -324,7 +290,7 @@ close(fd);
 Same as with `rdtsc` we have two choices.
 In assembly:
 ```c
-#define rdpmc(pmc, eax, edx) asm volatile ("rdpmc\n" : "=a"(eax), "=d"(edx)) 
+#define rdpmc(pmc, eax, edx) asm volatile ("rdpmc\n" : "=a"(eax), "=d"(edx) : "c"(pmc)) 
 
 size_t start;
 unsigned int low_1, high_1;
