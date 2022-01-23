@@ -4,7 +4,6 @@ title:  "RDPMC - x86 benchmarking instruction"
 date:   2020-02-16 01:00:00 +0000
 categories: perf
 ---
-
 #### *Benchmarking application on modern CPU's is hard.*
 
 They have advanced beyond simple sequential predictability a long time ago with the introduction of Out of Order execution, branch prediction, power licenses, etc.
@@ -41,7 +40,7 @@ There is an excellent article about [this](https://medium.com/@veedrac/learning-
 A big advantage of this method is that we gain the whole power of profiler with all metrics and conveniences. 
 A major disadvantage is a necessity of dealing with a noise factor, which can be brutal.
 
-Any piece of non-determinism (syscall, malloc) increase variance of a noise, which means that your improvements need to be more and more significant to be statistically provable. This, unfortunately, makes the profiler approach very hard to use without separating the required function from the application code and put it into a clean deterministic environment (e.g. new program). Sometimes it’s possible, sometimes it’s not.
+Any piece of non-determinism (syscall, malloc) increase noise, which means that your improvements need to be more and more significant to be statistically provable. This, unfortunately, makes the profiler approach very hard to use without separating the required function from the application code and put it into a clean deterministic environment (e.g. new program). Sometimes it’s possible, sometimes it’s not.
 
 ### 2. RDTSC
 RDTSC instruction is the most frequent answer on stack overflow and is, unfortunately, half correct.  
@@ -77,7 +76,6 @@ duration in cycles / speed of processor (in Hertz) = elapsed time
 
 So what's not right with this approach?
 
-Basically, we have the same problems as in the "benchmark framework" paragraph.   
 No retired instructions, no mispredicted branches.  
 But isn't that sufficient to evaluate, which implementation is better?
 
@@ -262,7 +260,7 @@ sudo wrmsr -a 0x38f 0x700000001
 
 With values which we found in step 'a' we should get a number similar to this:
 ```
-0x00430148 // Binary: 0b10000110000000110100001
+0x00430148 // Binary: 0b10000110000000101001000 
 ```
 0x0148 - is our event number and umask.
 0x0043 - means that we enable counter and is available in ring 0 and 3.
@@ -274,7 +272,7 @@ wrmsr -a 0x186 0x00430148
 **d)** It's done. Now let's check that's all fine.
 ```sh
 sudo rdmsr -0 -c -a 0x186
-sudo rdmsr -0 -c -a 0x01c
+sudo rdmsr -0 -c -a 0xc1
 ```
 We should see non zero numbers in both cases. If not GOTO FAQ below.
 
@@ -336,5 +334,4 @@ Yes, they are in use by every major profiler.
 Are you sure that you aren't inside VM? In VM everything depends on your hypervisor. Some MSR's can work but, by default, I assume that they don't.
 If you aren't inside VM then check MSR address in manual. Maybe there is a mistake.
 #### 4. RDPMC instruction rises the SEGFAULT signal.
-Because they aren't switched to work in userspace. Make sure that you inserted LKM and made `ioctl(fd, 1)` before you try to use instruction.
-
+Did you enabled it to work in userspace?
